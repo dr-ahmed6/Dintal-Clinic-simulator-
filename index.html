@@ -1,394 +1,264 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>محاكي العيادة السنية الذكي</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>العيادة الافتراضية لطب الأسنان | AI Virtual Dental Clinic</title>
 <style>
-  :root{
-    --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --sub:#64748b; --line:#e2e8f0;
-    --accent:#075985; --accent2:#0369a1;
-    box-sizing:border-box;
-    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
-  }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){ --bg:#0f172a; --card:#1e293b; --ink:#f1f5f9; --sub:#94a3b8; --line:#334155; }
-  }
-  :root[data-theme="dark"]{ --bg:#0f172a; --card:#1e293b; --ink:#f1f5f9; --sub:#94a3b8; --line:#334155; }
-  html{ scroll-padding-top:env(safe-area-inset-top,0px); height:100%; }
-  body{ background:var(--bg); color:var(--ink); height:100%; margin:0; font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; }
-  .card{ background:var(--card); border:1px solid var(--line); }
-  .sub{ color:var(--sub); }
-  .btn{ background:var(--accent); color:#fff; }
-  .btn:hover{ background:var(--accent2); }
+:root{--bg:#f1f5f9;--c:#fff;--ink:#0f172a;--sub:#64748b;--ln:#e2e8f0;--ac:#075985;--ok:#047857;--bad:#b91c1c;--wn:#fffbeb}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1220;--c:#16213a;--ink:#f1f5f9;--sub:#94a3b8;--ln:#2b3a58;--ac:#38bdf8;--wn:#3a2f10}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,Tahoma,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#app{max-width:820px;margin:auto;padding:12px}
+nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 0;border-bottom:1px solid var(--ln);margin-bottom:12px}
+nav b{flex:1;min-width:150px;color:var(--ac)}
+button,.b{font:inherit;font-size:14px;border:1px solid var(--ln);background:var(--c);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer;min-height:40px;text-decoration:none;display:inline-block}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button:disabled{opacity:.45;cursor:default}
+.card{background:var(--c);border:1px solid var(--ln);border-radius:12px;padding:14px;margin:10px 0}
+.sub{color:var(--sub);font-size:13px}.tag{display:inline-block;font-size:12px;border:1px solid var(--ln);border-radius:99px;padding:1px 9px;margin:2px;color:var(--sub)}
+.warn{background:var(--wn);border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:13px}
+.ph{border:2px dashed var(--ln);border-radius:8px;padding:12px;text-align:center;color:var(--sub);font-size:13px;margin-top:8px}
+.g{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+button.p{min-width:70px}.m{padding:8px 12px;border-radius:10px;margin:6px 0;max-width:90%}.mu{background:var(--ac);color:#fff;margin-inline-start:auto}.ma{background:var(--bg);border:1px solid var(--ln)}
+label.o{display:block;border:1px solid var(--ln);border-radius:8px;padding:9px 12px;margin:6px 0;cursor:pointer}
+input[type=text],input[type=number],select{font:inherit;padding:9px;border:1px solid var(--ln);border-radius:8px;background:var(--c);color:var(--ink);max-width:100%}
+input[type=text]{width:100%}h2,h3{margin:.4em 0}.ok{color:var(--ok)}.bad{color:var(--bad)}a{color:var(--ac)}
 </style>
 </head>
 <body>
-<div id="app" class="max-w-3xl mx-auto p-4 sm:p-6"></div>
-
+<div id="app"></div>
 <script>
-/* ===================== بيانات الحالات (نفس المصادر السريرية السابقة) ===================== */
-const DEPTS = [
-  { id:"endo", name:"قسم الإندودونتيا (علاج الجذور)", icon:"🦷" },
-  { id:"trauma", name:"قسم رضوض الأسنان لدى الأطفال", icon:"👶" },
-  { id:"perio", name:"قسم أمراض دواعم السن", icon:"🩸" },
-  { id:"path", name:"قسم أمراض الفم", icon:"🔬" },
+/* ===== helpers ===== */
+const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function ls(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem(k));localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}}
+let lang=ls('lang')||'ar';
+const T=x=>x[lang=='ar'?0:1];
+let S={v:'home',q:'',sp:''},cs=null,EV={r:[],err:[],busy:false,abs:{},done:false};
+const U={
+app:['العيادة الافتراضية لطب الأسنان المدعومة بالذكاء الاصطناعي','AI-Powered Virtual Dental Clinic'],
+home:['الرئيسية','Home'],lib:['الحالات','Cases'],ev:['الأدلة العلمية','Evidence'],about:['حول','About'],
+disc:['محاكاة تعليمية فقط. لا تغني عن التدريب السريري المُشرَف عليه ولا عن الحكم المهني.','Educational simulator only. Not a substitute for supervised clinical training or professional judgment.'],
+prog:['تقدّمك','Your progress'],done:['حالات مكتملة','cases completed'],best:['أفضل نتيجة','Best score'],
+search:['بحث بالعنوان أو التخصص…','Search title or specialty…'],all:['كل التخصصات','All specialties'],
+open:['فتح الحالة','Open case'],back:['‹ رجوع','‹ Back'],hist:['١. التاريخ المرضي (اختر الأسئلة)','1. History (choose questions)'],
+exam:['٢. الفحص السريري','2. Clinical examination'],showex:['عرض نتائج الفحص','Show findings'],
+inv:['٣. الاستقصاءات','3. Investigations'],req:['طلب','Request'],reqd:['تم الطلب','Requested'],
+dx:['٤. التشخيص المبدئي','4. Provisional diagnosis'],df:['٥. التشخيص التفريقي (اختر ما يناسب)','5. Differentials (select all that apply)'],
+mg:['٦. خطة العلاج','6. Management plan'],sub:['تسليم الإجابات','Submit answers'],
+noimg:['لا توجد صورة موثّقة لهذه الحالة. الصورة المقصودة:','No verified image available. Intended image:'],
+res:['النتيجة','Result'],bd:['تفصيل النقاط','Score breakdown'],key:['الإجابة الصحيحة','Correct answer'],
+tut:['المعلّم الذكي (وضع تجريبي: شروحات مُعدّة مسبقًا، لا يوجد نموذج ذكاء اصطناعي حي)','AI tutor (DEMO mode: prepared explanations, no live AI model)'],
+evb:['الأدلة العلمية وراء هذه الحالة','Scientific Evidence Behind This Case'],
+obj:['أهداف التعلم','Learning objectives'],retry:['إعادة المحاولة','Retry'],
+tp:['موضوع البحث (مثال: irreversible pulpitis)','Topic (e.g. irreversible pulpitis)'],yr:['من سنة','From year'],
+sort:['الترتيب','Sort'],rel:['الأكثر صلة','Relevance'],dt:['الأحدث','Newest'],go:['بحث','Search'],
+loading:['جارٍ البحث…','Searching…'],empty:['لا توجد نتائج.','No results.'],abs:['عرض الملخص','Show abstract'],
+save:['حفظ','Save'],saved:['المراجع المحفوظة (محليًا على جهازك)','Saved references (local to your device)'],
+rm:['حذف','Remove'],src:['فتح المصدر الأصلي','Open original source'],
+a_abs:['الملخص متاح (وليس النص الكامل)','Abstract available (not full text)'],a_meta:['بيانات وصفية فقط','Metadata only'],
+a_oa:['وصول مفتوح: النص الكامل قد يكون متاحًا لكن لم يُجلب بواسطة التطبيق','Open access: full text may exist but was NOT retrieved by this app'],
+};
+const SP={endo:['الإندودونتيا','Endodontics'],trauma:['رضوض أسنان الأطفال','Pediatric Dentistry – Trauma'],perio:['أمراض دواعم السن','Periodontology'],path:['أمراض الفم','Oral Pathology']};
+const DIF={e:['سهل','Easy'],m:['متوسط','Moderate']};
+const TY='Fictional Educational Scenario';
+/* ===== curated references (bibliographic details need independent verification) ===== */
+const R={
+aae:{t:'AAE Consensus Conference Recommended Diagnostic Terminology',a:'American Association of Endodontists',j:'J Endod',y:2009,k:'pm'},
+ada:{t:'Dental Radiographic Examinations: Recommendations for Patient Selection and Limiting Radiation Exposure',a:'American Dental Association / U.S. FDA',j:'ADA/FDA guidance',y:'',k:'web'},
+iadt:{t:'International Association of Dental Traumatology guidelines for the management of traumatic dental injuries: 2. Avulsion of permanent teeth',a:'Fouad AF et al.',j:'Dent Traumatol',y:2020,k:'pm'},
+aap:{t:'A new classification scheme for periodontal and peri-implant diseases and conditions: Introduction and key changes from the 1999 classification',a:'Caton JG et al.',j:'J Periodontol',y:2018,k:'pm'},
+nev:{t:'Neville: Oral and Maxillofacial Pathology (ulcerative conditions chapter)',a:'Neville BW et al.',j:'Textbook (Elsevier)',y:'',k:'web'}};
+const rUrl=r=>r.k=='pm'?'https://pubmed.ncbi.nlm.nih.gov/?term='+encodeURIComponent(r.t):'https://www.google.com/search?q='+encodeURIComponent(r.t+' '+r.a);
+/* ===== cases ===== */
+const CASES=[
+{id:'ENDO-01',sp:'endo',d:'m',age:45,endo:1,
+cc:['ألم بالسن 46 يوقظني ليلاً ويستمر طويلاً بعد البارد والسخن.','Pain in tooth 46 that wakes me at night and lingers long after cold and hot stimuli.'],
+h:[[['متى بدأ الألم؟','When did it start?'],['قبل أسبوعين وازداد سوءًا.','Two weeks ago, getting worse.']],
+[['هل يأتي الألم تلقائيًا؟','Does it occur spontaneously?'],['نعم، خاصة ليلًا.','Yes, especially at night.']],
+[['هل تتناول مسكنات؟','Do you take painkillers?'],['نعم، تخفف الألم قليلًا.','Yes, they help only a little.']],
+[['ما تاريخك الطبي؟','Medical history?'],['سليم، لا أدوية.','Unremarkable, no medications.']]],
+ex:['تسوس عميق وحشي بالسن 46؛ استجابة مطوّلة للبارد (أكثر من 30 ثانية).','Deep distal caries on 46; lingering response to cold (>30 s).'],
+inv:[{id:'pa',l:['أشعة محيطة بالذروة (PA)','Periapical radiograph (PA)'],p:0,r:['تسوس عميق يقترب من اللب، بدون آفة واضحة حول الذروة (نتيجة مكتوبة للسيناريو).','Deep caries approaching the pulp, no obvious periapical lesion (scenario-written result).'],img:['أشعة PA للسن 46 تُظهر تسوسًا عميقًا قريبًا من اللب','PA of tooth 46 showing deep caries near the pulp']},
+{id:'cbct',l:['CBCT','CBCT'],p:-15,r:['لا استطباب لـ CBCT في حالة بسيطة (مخالف لـ ALARA).','No indication for CBCT in a simple case (violates ALARA).']},
+{id:'cbc',l:['تحليل دم شامل (CBC)','Complete blood count (CBC)'],p:-25,r:['غير ذي صلة بألم سن بسيط.','Unrelated to a simple toothache.']}],
+dx:[['sip','التهاب لب لا رجعي مُعرِض للأعراض','Symptomatic irreversible pulpitis'],['rev','التهاب لب رجعي','Reversible pulpitis'],['nec','نخر اللب','Pulp necrosis'],['nrm','لب سليم','Normal pulp']],
+ans:'sip',diffs:['rev','nec'],
+mg:[['علاج لبّي (استئصال اللب/قنوات) تحت العزل بالرابر دام','Pulpectomy / root canal treatment under rubber dam',20],['حشوة تجميلية فقط وملاحظة','Restoration only and observe',0],['مضاد حيوي فقط','Antibiotics only',0]],
+ex2:[['الألم العفوي الليلي واستمراره بعد التحفيز الحراري يدعمان التهاب اللب اللارجعي المُعرِض للأعراض.','Spontaneous night pain and lingering thermal response support symptomatic irreversible pulpitis.'],['في الالتهاب الرجعي يزول الألم خلال ثوانٍ ولا يوجد ألم تلقائي؛ ونخر اللب لا يستجيب حراريًا.','Reversible pulpitis resolves within seconds with no spontaneous pain; necrosis is non-responsive to thermal tests.'],['أخطاء شائعة: طلب CBCT أو تحاليل دم بلا مبرر، وبدء العلاج دون PA أو عزل بالرابر دام.','Common errors: unnecessary CBCT/blood tests; starting treatment without a PA or rubber dam.']],
+lo:['تمييز أنواع التهاب اللب سريريًا','Differentiate pulpitis types clinically','اختيار الاستقصاء المناسب (PA أولًا)','Choose appropriate investigations (PA first)'],
+rf:[['aae','أنواع الالتهاب اللبي وأعراضها','Pulpal diagnoses and their symptoms'],['ada','PA هو الأساس؛ CBCT للحالات المعقدة فقط','PA first; CBCT only for complex cases']]},
+{id:'TRAUMA-01',sp:'trauma',d:'e',age:8,
+cc:['وقعت الثنية العلوية الدائمة بالكامل بعد سقوط قبل 20 دقيقة. الأم تمسك بالسن.','Permanent upper central incisor completely knocked out in a fall 20 minutes ago. The mother is holding the tooth.'],
+h:[[['كم مضى على الحادثة؟','Time since injury?'],['20 دقيقة.','20 minutes.']],[['أين السن الآن؟','Where is the tooth now?'],['في يدها، لم يُحفظ بشيء.','In her hand, not stored in anything.']],[['هل فقد الطفل وعيه؟','Loss of consciousness?'],['لا.','No.']]],
+ex:['سنخ فارغ تمامًا بدون جذر متبقٍّ؛ نزف خفيف.','Empty socket with no retained root; mild bleeding.'],
+inv:[{id:'soc',l:['فحص السنخ سريريًا','Clinical socket examination'],p:0,r:['السنخ فارغ: قلع كامل (Avulsion).','Empty socket: complete avulsion.'],img:['صورة سريرية لسنخ فارغ في الثنية العلوية','Clinical photo of an empty upper central incisor socket']},
+{id:'cbct',l:['CBCT','CBCT'],p:-15,r:['غير مبرر في الإسعاف؛ يؤخر العلاج.','Not justified in the emergency; delays care.']}],
+dx:[['avl','قلع كامل (Avulsion)','Avulsion'],['int','انغراس السن','Intrusive luxation'],['crf','كسر تاجي','Crown fracture'],['ext','إزاحة خارجية','Extrusive luxation']],
+ans:'avl',diffs:[],
+mg:[['حفظ السن في حليب بارد (أو HBSS) والحضور فورًا؛ إعادة الزرع فورًا إن كان نظيفًا','Store in cold milk (or HBSS) and come immediately; replant at once if clean',50],['غسل السن بالصابون وحفظه في ماء الحنفية','Wash with soap and store in tap water',-40],['لفّه بمنديل جاف والمراجعة غدًا','Wrap in dry tissue and visit tomorrow',0]],
+ex2:[['السنخ الفارغ مع سن كامل خارج الفم يؤكد القلع الكامل.','An empty socket with the whole tooth outside the mouth confirms avulsion.'],['الانغراس والإزاحة والكسر التاجي لا تفسر غياب السن من السنخ.','Intrusion, extrusion, and crown fracture do not explain a tooth absent from its socket.'],['خطأ حرج: ماء الحنفية. الوقت حاسم لإعادة الزرع.','Critical error: tap water. Time is critical for replantation.']],
+lo:['إدارة الإسعاف في القلع الكامل','Emergency management of avulsion'],rf:[['iadt','وسط الحفظ المناسب وإعادة الزرع الفوري','Appropriate storage medium and immediate replantation']]},
+{id:'PERIO-01',sp:'perio',d:'m',age:48,
+cc:['نزف اللثة عند التفريش وحركة بسيطة بالقواطع السفلية. مدخن منذ 20 سنة.','Gingival bleeding on brushing and slight mobility of lower incisors. 20-year smoker.'],
+h:[[['هل أنت مدخن؟','Do you smoke?'],['نعم، علبة يوميًا منذ 20 سنة.','Yes, a pack daily for 20 years.']],[['أمراض مزمنة؟','Chronic diseases?'],['لا.','None.']],[['متى بدأ النزف؟','When did bleeding start?'],['منذ شهور.','For months.']]],
+ex:['لثة حمراء متورمة وتراكم جير؛ حركة درجة 1 في القواطع السفلية.','Red swollen gingiva with calculus; grade 1 mobility of lower incisors.'],
+inv:[{id:'probe',l:['سبر وتخطيط لثوي','Periodontal probing/charting'],p:0,r:['BOP إيجابي، جيوب 5–6 مم، وفقدان ارتباط سريري (نتيجة السيناريو).','BOP positive, 5–6 mm pockets, clinical attachment loss (scenario result).']},
+{id:'pa',l:['أشعة PA','Periapical radiograph'],p:0,r:['فقدان عظمي أفقي في المنطقة الأمامية السفلية (نتيجة السيناريو).','Horizontal bone loss in the lower anterior region (scenario result).'],img:['PA للقواطع السفلية تُظهر فقدانًا عظميًا أفقيًا','PA of lower incisors showing horizontal bone loss']},
+{id:'cbc',l:['تحليل دم شامل (CBC)','Complete blood count (CBC)'],p:-25,r:['غير ضروري هنا.','Not necessary here.']}],
+dx:[['per','التهاب دواعم السن','Periodontitis'],['gin','التهاب لثة مرتبط باللويحة','Plaque-induced gingivitis'],['hlt','لثة سليمة','Healthy periodontium'],['enl','تضخم لثوي دوائي','Drug-induced gingival enlargement']],
+ans:'per',need:['probe','pa'],diffs:['gin'],
+mg:[['تعليمات نظافة، إقلاع عن التدخين، وتنظيف وتسوية الجذور','Oral hygiene instruction, smoking cessation, scaling and root planing',20],['مضاد حيوي فقط','Antibiotics only',0],['قلع القواطع السفلية فورًا','Immediate extraction of lower incisors',0]],
+ex2:[['النزف مع فقدان ارتباط سريري وفقدان عظمي شعاعي يميّز التهاب الدواعم.','Bleeding with clinical attachment loss and radiographic bone loss defines periodontitis.'],['التهاب اللثة: نزف دون فقدان ارتباط أو عظم.','Gingivitis: bleeding without attachment or bone loss.'],['خطأ شائع: تشخيص التهاب الدواعم دون سبر وأشعة (خصم 20).','Common error: diagnosing periodontitis without probing and radiograph (−20).']],
+lo:['التفريق بين التهاب اللثة والتهاب الدواعم','Distinguish gingivitis from periodontitis'],rf:[['aap','معايير تصنيف الأمراض اللثوية','Classification criteria for periodontal conditions']]},
+{id:'PATH-01',sp:'path',d:'e',age:40,
+cc:['قرحة مؤلمة على الحافة الجانبية للسان منذ 4 أيام بجوار ضرس سفلي مكسور.','Painful ulcer on the lateral tongue for 4 days next to a fractured lower molar.'],
+h:[[['هل تكبر القرحة؟','Is it enlarging?'],['لا، ثابتة.','No, stable.']],[['هل من سن حاد؟','Any sharp tooth?'],['نعم، ضرس 36 مكسور.','Yes, fractured tooth 36.']],[['التدخين أو الكحول؟','Smoking/alcohol?'],['لا.','No.']]],
+ex:['قرحة نحو 6 مم، مركز أصفر-أبيض وهالة حمراء، بلا تصلب، تلامس حافة حادة.','About 6 mm ulcer, yellow-white center with red halo, no induration, contacting a sharp edge.'],
+inv:[{id:'clin',l:['الفحص السريري الموضعي','Local clinical examination'],p:0,r:['القرحة تتطابق مع حافة السن 36.','Ulcer corresponds to the edge of tooth 36.'],img:['صورة سريرية لقرحة رضية على حافة اللسان','Clinical photo of a traumatic ulcer on the lateral tongue']},
+{id:'bx',l:['خزعة (إذا لم تُشفَ)','Biopsy (if non-healing)'],p:0,r:['ليست الخطوة الأولى؛ تُطلب إذا استمرت القرحة أكثر من 2–3 أسابيع بعد إزالة السبب.','Not first step; indicated if it persists beyond 2–3 weeks after removing the cause.']},
+{id:'cbct',l:['CBCT','CBCT'],p:-15,r:['غير مبرر.','Not justified.']},{id:'cbc',l:['تحليل دم شامل (CBC)','Complete blood count (CBC)'],p:-25,r:['غير ذي صلة.','Unrelated.']}],
+dx:[['tu','قرحة رضّية','Traumatic ulcer'],['scc','سرطانة الخلايا الحرشفية','Squamous cell carcinoma'],['ras','قلاع (قرحة اطّرادية)','Recurrent aphthous ulcer'],['fib','ليفوما تهيجية','Irritation fibroma']],
+ans:'tu',diffs:['scc','ras'],
+mg:[['إزالة/تنعيم السبب (حافة السن) ومراجعة بعد 10–14 يومًا، وخزعة إن لم تُشفَ','Remove/smooth the cause, review in 10–14 days, biopsy if not healed',20],['استئصال واسع فوري','Immediate wide excision',0],['مضاد حيوي جهازي فقط','Systemic antibiotics only',0]],
+ex2:[['الارتباط بحافة حادة، المركز الأصفر والهالة الحمراء، وقصر المدة تدعم القرحة الرضّية.','Link to a sharp edge, yellow center with red halo and short duration support a traumatic ulcer.'],['SCC يتصلب ويدوم وينمو؛ الليفوما عقيدة وليست قرحة.','SCC tends to be indurated, persistent, enlarging; fibroma is a nodule, not an ulcer.'],['خطأ شائع: تخمين SCC دون دليل أو تجاهل السبب الموضعي.','Common error: guessing SCC without evidence or ignoring the local cause.']],
+lo:['وصف القرحة الرضّية وطريقة متابعتها','Describe and follow up a traumatic ulcer'],rf:[['nev','وصف القرحة الرضّية وزمن الشفاء 10–14 يومًا','Description of traumatic ulcer; healing in 10–14 days']]}
 ];
-
-function svgRadiographPA46(){
-  return `<svg viewBox="0 0 320 220" class="w-full max-w-sm rounded-lg border" style="border-color:#334155;background:#000">
-    <path d="M118 30 Q124 18 150 18 Q176 18 182 30 L180 56 Q150 64 120 56 Z" fill="#e2e8f0"/>
-    <rect x="122" y="56" width="56" height="22" fill="#cbd5e1"/>
-    <rect x="142" y="58" width="16" height="14" fill="#475569"/>
-    <path d="M128 78 L118 150 L138 168 L144 100 Z" fill="#cbd5e1"/>
-    <path d="M172 78 L182 150 L162 168 L156 100 Z" fill="#cbd5e1"/>
-    <ellipse cx="130" cy="160" rx="24" ry="18" fill="#0a0a0a" stroke="#ef4444" stroke-dasharray="4 3" stroke-width="1.5"/>
-    <line x1="150" y1="168" x2="228" y2="150" stroke="#ef4444"/>
-    <text x="230" y="147" fill="#f1f5f9" font-size="10">انحلال محيط الذروة</text>
-    <text x="96" y="200" fill="#94a3b8" font-size="9">السن 46 — أشعة PA</text>
-  </svg>`;
-}
-function svgBoneLoss(){
-  let teeth=[90,140,190,240], g="";
-  teeth.forEach(x=>{
-    g+=`<path d="M${x-13} 30 Q${x} 22 ${x+13} 30 L${x+11} 50 L${x-11} 50 Z" fill="#e2e8f0"/>
-    <rect x="${x-11}" y="50" width="22" height="18" fill="#cbd5e1"/>
-    <path d="M${x-11} 68 L${x} 148 L${x+11} 68 Z" fill="#cbd5e1"/>`;
-  });
-  return `<svg viewBox="0 0 320 220" class="w-full max-w-sm rounded-lg border" style="border-color:#334155;background:#000">
-    ${g}
-    <line x1="55" y1="76" x2="275" y2="76" stroke="#64748b" stroke-dasharray="3 3"/>
-    <line x1="55" y1="106" x2="275" y2="106" stroke="#ef4444" stroke-width="1.5"/>
-    <text x="160" y="18" fill="#94a3b8" font-size="9" text-anchor="middle">مستوى طبيعي (متقطع) مقابل الحالي</text>
-    <text x="150" y="130" fill="#f1f5f9" font-size="10" text-anchor="middle">فقدان عظمي أفقي &gt;30%</text>
-  </svg>`;
-}
-function svgSocket(){
-  return `<svg viewBox="0 0 300 200" class="w-full max-w-sm rounded-lg border" style="border-color:#fecdd3;background:#fdf2f2">
-    <path d="M15 118 Q150 92 285 118 L285 165 L15 165 Z" fill="#f3b9b4"/>
-    <rect x="48" y="66" width="32" height="58" rx="6" fill="#fdfdfd" stroke="#dba8a2"/>
-    <rect x="220" y="66" width="32" height="58" rx="6" fill="#fdfdfd" stroke="#dba8a2"/>
-    <ellipse cx="150" cy="122" rx="22" ry="13" fill="#7a2b2b"/>
-    <ellipse cx="150" cy="118" rx="15" ry="8" fill="#c0392b"/>
-    <text x="86" y="188" fill="#7a2b2b" font-size="10">سنخ فارغ — قلع كامل (Avulsion)</text>
-  </svg>`;
-}
-function svgPerio(){
-  const sites=[[45,6,1],[105,5,1],[165,6,1],[225,3,0]];
-  let bars="";
-  sites.forEach(([x,d,bop])=>{
-    bars+=`<rect x="${x-12}" y="${170-d*14}" width="24" height="${d*14}" fill="${bop?'#ef4444':'#94a3b8'}" opacity="${bop?0.85:0.5}" rx="3"/>
-    <text x="${x}" y="185" fill="#475569" font-size="9" text-anchor="middle">${d}مم</text>`;
-  });
-  return `<svg viewBox="0 0 300 200" class="w-full max-w-sm rounded-lg border" style="border-color:#e2e8f0;background:#f8fafc">
-    <line x1="20" y1="170" x2="280" y2="170" stroke="#94a3b8"/>
-    ${bars}
-    <text x="150" y="20" fill="#334155" font-size="10" text-anchor="middle">نزف عند السبر (BOP) + جيوب 5-6مم</text>
-  </svg>`;
-}
-function svgUlcer(){
-  return `<svg viewBox="0 0 300 200" class="w-full max-w-sm rounded-lg border" style="border-color:#fecdd3;background:#fdeeee">
-    <path d="M10 60 Q150 20 290 60 L290 160 Q150 190 10 160 Z" fill="#f4a6a0"/>
-    <ellipse cx="150" cy="110" rx="20" ry="14" fill="#ef4444" opacity="0.55"/>
-    <ellipse cx="150" cy="110" rx="12" ry="8" fill="#fde68a"/>
-    <path d="M205 95 L225 70 L232 100 Z" fill="#e2e8f0" stroke="#94a3b8"/>
-    <text x="236" y="90" fill="#7a2b2b" font-size="9">سن 36 حادة/مكسورة</text>
-    <text x="90" y="182" fill="#7a2b2b" font-size="10">قرحة ~6مم، مركز أصفر، هالة حمراء</text>
-  </svg>`;
-}
-
-const CASES = [
-  { id:"case-1", dept:"endo", patientType:"adult", tooth:"46",
-    intro:"أنا أحمد، عمري 45 سنة، عندي وجع بسني من فترة وما عم يوقف. بيصحيني من نومي بالليل، وإذا حطيت شي بارد أو سخن عالسن بضل يوجعني لمدة طويلة.",
-    history:[
-      {q:"متى بدأ الألم؟", a:"قبل أسبوعين تقريباً، وصار أسوأ بالأيام الأخيرة."},
-      {q:"شو يحرّض الألم؟", a:"البارد والسخن، وأحياناً بيجيني لحاله وخاصة بالليل."},
-      {q:"قدرت تحدد مكان الوجع؟", a:"هلق واضح إنه بالضرس السفلي الأيمن الخلفي."},
-    ],
-    requiresPA:true,
-    investigations:[
-      {id:"inv-pa", label:"طلب أشعة PA", points:0, isPA:true, svg:svgRadiographPA46(),
-       note:"انحلال محيط الذروة بالسن 46 — متوافق مع تشخيص لبّي التهابي.",
-       source:"FDA/ADA ALARA — PA كخط أول للتشخيص"},
-      {id:"inv-cbct", label:"طلب أشعة CBCT", points:-15,
-       warn:"لا استطباب لـCBCT بحالة بسيطة بسن واحدة — يخالف مبدأ ALARA.",
-       source:"FDA/ADA ALARA (Gamification Logic §4)"},
-    ],
-    diagnoses:[
-      {id:"dx-rev", label:"التهاب لبّي رجعي (Reversible Pulpitis)", correct:false, points:-20,
-       source:"أقرب قيمة موثّقة (AAP 2017 §6) — لا رقم صريح لهذا الخيار."},
-      {id:"dx-irrev", label:"التهاب لبّي عكوس شديد الأعراض", correct:true, points:50,
-       source:"AAE Consensus 2009 — ألم عفوي/حروري يوقظ المريض ليلاً."},
-    ],
-    citation:"AAE Consensus 2009 + FDA/ADA ALARA Principles." },
-
-  { id:"case-2", dept:"trauma", patientType:"child", tooth:"الثنية العلوية (Avulsion كامل)",
-    intro:"أنا أم كريم، ابني عمره 8 سنين وقع من الأرجوحة وسنّه الأمامية طاحت بالكامل. شو لازم أعمل؟",
-    history:[
-      {q:"قديش صار وقت من الحادثة؟", a:"20 دقيقة تقريباً."},
-      {q:"وين حاطة السن هلق؟", a:"قابضة عليها بإيدي، ما حطيتها بشي."},
-    ],
-    requiresPA:false,
-    investigations:[
-      {id:"inv-socket", label:"الفحص السريري للسنخ", points:0, svg:svgSocket(),
-       note:"السنخ فارغ تماماً — قلع كامل (Avulsion)، لا جذر متبقٍّ.",
-       source:"IADT 2020 — توثيق السنخ فور الرضّ"},
-    ],
-    diagnoses:[
-      {id:"dx-water", label:"غسل السن بالصابون وحفظها بمي الحنفية", correct:false, points:-40,
-       source:"IADT 2020 — يُمنع استخدام مي الحنفية إطلاقاً."},
-      {id:"dx-milk", label:"حفظ السن بحليب بارد/HBSS والمجيء فوراً", correct:true, points:50,
-       source:"IADT 2020 — إعادة الزرع الفوري أو الحفظ بحليب بارد/HBSS."},
-    ],
-    citation:"IADT Guidelines 2020 — بروتوكول الـ Avulsion الكامل." },
-
-  { id:"case-3", dept:"perio", patientType:"adult", tooth:"الأسنان الأمامية السفلية",
-    intro:"بتنزف لثتي كل ما بفرشي أسناني، ولاحظت إنه أسناني الأمامية السفلية صارت مهزوزة شوي.",
-    history:[
-      {q:"هل انت مدخن؟", a:"إي، من 20 سنة، علبة تقريباً باليوم."},
-      {q:"عندك أمراض مزمنة؟", a:"لأ، ولا آخد أدوية دائمة."},
-    ],
-    requiresPA:true,
-    perioEvidence:["inv-pa2","inv-probe"],
-    investigations:[
-      {id:"inv-pa2", label:"طلب أشعة PA", points:0, isPA:true, svg:svgBoneLoss(),
-       note:"فقدان عظمي أفقي أكثر من 30%.", source:"AAP 2017 — فقدان العظم الشعاعي معيار أساسي"},
-      {id:"inv-probe", label:"سبر وتخطيط لثوي", points:0, svg:svgPerio(),
-       note:"نزف عند السبر (BOP) مع جيوب 5-6مم.", source:"AAP 2017 — BOP وعمق الجيوب"},
-    ],
-    diagnoses:[
-      {id:"dx-ging", label:"التهاب لثة مرتبط باللويحة الجرثومية", correct:false, points:-20,
-       source:"أقرب قيمة موثّقة (AAP 2017 §6)."},
-      {id:"dx-perio", label:"التهاب دواعم السن (Periodontitis)", correct:true, points:50,
-       source:"AAP 2017 — BOP + فقدان ارتباط سريري + فقدان عظمي شعاعي."},
-    ],
-    citation:"AAP 2017 Classification." },
-
-  { id:"case-4", dept:"path", patientType:"adult", tooth:"الحافة الوحشية للسان",
-    intro:"عندي قرحة موجعة بجنب لساني من كم يوم، وبتوجعني وأنا عم بحكي أو باكل.",
-    history:[
-      {q:"من متى وأنت حاسس فيها؟", a:"من 4 أيام تقريباً، ظهرت فجأة وضلت."},
-      {q:"في سن حادة أو مكسورة جنبها؟", a:"إي، ضرس مكسور بالفك السفلي الشمال بيحك بلساني."},
-      {q:"القرحة عم تكبر؟", a:"لأ، ثابتة على نفس الحجم."},
-    ],
-    requiresPA:false,
-    investigations:[
-      {id:"inv-ulcer", label:"الفحص السريري للقرحة", points:0, svg:svgUlcer(),
-       note:"قرحة ~6مم، مركز أصفر-أبيض وهالة حمراء، مجاورة لسن 36 حادة.",
-       source:"Neville Oral Pathology — وصف القرحة الرضّية"},
-    ],
-    diagnoses:[
-      {id:"dx-scc", label:"سرطانة خلايا حرشفية (SCC)", correct:false, points:-25,
-       source:"أقرب قيمة موثّقة (Gamification Logic §4) لتخمين خطير بلا دليل."},
-      {id:"dx-ulcer", label:"قرحة رضّية (Traumatic Ulcer)", correct:true, points:50,
-       source:"Neville — مرتبطة بسن حادة، تُشفى خلال 10-14 يوماً."},
-    ],
-    citation:"Neville Oral and Maxillofacial Pathology." },
-];
-
-/* ===================== الحالة والتخزين ===================== */
-let state = { view:"depts", dept:null, caseId:null, score:100, log:[], case:{} };
-try{ const s=localStorage.getItem('dentalSim_score'); if(s) state.score=JSON.parse(s).score, state.log=JSON.parse(s).log; }catch(e){}
-function persistScore(){ try{ localStorage.setItem('dentalSim_score', JSON.stringify({score:state.score, log:state.log})); }catch(e){} }
-function logAction(label, points, source){
-  state.score += points;
-  state.log.push({label, points, source, time:new Date().toLocaleString('ar-EG')});
-  persistScore();
-}
-function bonusClaimedToday(){ try{ return localStorage.getItem('dentalSim_bonusDate')===new Date().toDateString(); }catch(e){ return false; } }
-
-/* ===================== الواجهة ===================== */
-const app = document.getElementById('app');
-function render(){ app.innerHTML = view(); }
-
-function scoreBadge(){
-  return `<div class="flex items-center gap-2 rounded-full px-4 py-1.5 text-white" style="background:#1e293b">
-    <span>🏆</span><span class="text-sm">الرصيد:</span><b class="tabular-nums">${state.score}</b></div>`;
-}
-
-function view(){
-  if(state.view==="depts") return viewDepts();
-  if(state.view==="cases") return viewCases();
-  if(state.view==="case") return viewCase();
-  if(state.view==="summary") return viewSummary();
-  return "";
-}
-
-function viewDepts(){
-  return `
-  <div class="space-y-5">
-    <header class="flex items-center justify-between border-b pb-4" style="border-color:var(--line)">
-      <div class="flex items-center gap-3">
-        <div class="rounded-lg p-2.5 text-white text-xl" style="background:var(--accent)">🩺</div>
-        <div><h1 class="text-xl font-bold">محاكي العيادة السنية الذكي</h1>
-        <p class="sub text-sm">اختر قسم العيادة</p></div>
-      </div>${scoreBadge()}
-    </header>
-    <div class="flex items-start gap-2 rounded-md px-4 py-3 text-sm" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">
-      ℹ️ محاكاة تعليمية فقط — لا تُغني عن التقييم السريري الفعلي.
-    </div>
-    <div class="flex flex-wrap gap-3">
-      <button onclick="claimBonus()" ${bonusClaimedToday()?"disabled":""}
-        class="rounded-md border px-4 py-2 text-sm font-medium" style="border-color:var(--accent);color:var(--accent)">
-        📅 ${bonusClaimedToday()?"تم استلام مكافأة اليوم":"مكافأة الدخول اليومي (+10)"}
-      </button>
-      ${state.log.length ? `<button onclick="goSummary()" class="rounded-md border px-4 py-2 text-sm font-medium card">📋 ملخص الجلسة</button>` : ""}
-    </div>
-    <div class="grid gap-3 sm:grid-cols-2">
-      ${DEPTS.map(d=>`
-        <button onclick="openDept('${d.id}')" class="card rounded-lg p-5 text-right shadow-sm hover:shadow transition">
-          <div class="text-2xl mb-2">${d.icon}</div>
-          <div class="font-semibold">${d.name}</div>
-          <div class="sub text-xs mt-1">${CASES.filter(c=>c.dept===d.id).length} حالة</div>
-        </button>`).join("")}
-    </div>
-  </div>`;
-}
-
-function viewCases(){
-  const dept = DEPTS.find(d=>d.id===state.dept);
-  const list = CASES.filter(c=>c.dept===state.dept);
-  return `
-  <div class="space-y-4">
-    <button onclick="goDepts()" class="sub text-sm">‹ العودة إلى الأقسام</button>
-    <h2 class="text-lg font-bold">${dept.icon} ${dept.name}</h2>
-    <div class="grid gap-3 sm:grid-cols-2">
-      ${list.map(c=>`
-        <button onclick="openCase('${c.id}')" class="card rounded-lg p-4 text-right shadow-sm hover:shadow transition flex gap-3">
-          <div class="text-xl">${c.patientType==="child"?"👶":"🧑"}</div>
-          <div><div class="font-medium">الحالة: ${c.tooth}</div>
-          <div class="sub text-sm mt-1 line-clamp-2">${c.intro}</div></div>
-        </button>`).join("")}
-    </div>
-  </div>`;
-}
-
-function viewCase(){
-  const c = CASES.find(x=>x.id===state.caseId);
-  const cs = state.case;
-  const historyDone = cs.hist >= c.history.length;
-  let html = `<div class="space-y-4">
-    <button onclick="goCases()" class="sub text-sm">‹ العودة إلى الحالات</button>
-    <section class="card rounded-lg p-5 shadow-sm flex gap-3">
-      <div class="text-2xl">${c.patientType==="child"?"👶":"🧑"}</div>
-      <p class="leading-relaxed">${c.intro}</p>
-    </section>`;
-
-  if(!cs.outcome){
-    html += `<section class="card rounded-lg p-4 space-y-3">
-      <h3 class="font-semibold text-sm">💬 أخذ التاريخ المرضي</h3>`;
-    for(let i=0;i<cs.hist;i++){
-      html += `<div class="space-y-1">
-        <div class="rounded-lg px-3 py-2 text-sm" style="background:#e0f2fe">س: ${c.history[i].q}</div>
-        <div class="rounded-lg px-3 py-2 text-sm" style="background:var(--card);border:1px solid var(--line)">ج: ${c.history[i].a}</div>
-      </div>`;
-    }
-    if(!historyDone) html += `<button onclick="askNext()" class="btn rounded-md px-4 py-2 text-sm">اطرح السؤال التالي</button>`;
-    html += `</section>`;
-
-    if(historyDone && !cs.examStarted){
-      html += `<button onclick="beginExam()" class="btn rounded-md px-5 py-2.5 text-sm">بدء الفحص السريري ›</button>`;
-    }
-
-    if(cs.examStarted){
-      html += `<section class="space-y-3"><h3 class="font-semibold text-sm">🩻 الفحوصات والاستقصاءات</h3>`;
-      c.investigations.forEach(inv=>{
-        const req = cs.inv[inv.id];
-        html += `<div class="card rounded-lg p-4">
-          <div class="flex items-center justify-between gap-3">
-            <span class="text-sm font-medium">${inv.label}</span>
-            <button onclick="requestInv('${inv.id}')" ${req?"disabled":""} class="rounded-md border px-3 py-1.5 text-xs" style="border-color:var(--line)">${req?"تم الطلب":"طلب"}</button>
-          </div>
-          ${req?`<div class="mt-3 space-y-2">${inv.svg||""}${inv.note?`<p class="text-sm sub">${inv.note}</p>`:""}${inv.warn?`<p class="text-sm rounded-md p-2" style="background:#fef2f2;color:#b91c1c">⚠️ ${inv.warn}</p>`:""}</div>`:""}
-        </div>`;
-      });
-      html += `</section>
-      <section class="card rounded-lg p-4 space-y-2">
-        <h3 class="font-semibold text-sm">🧠 التشخيص / القرار السريري</h3>
-        ${c.diagnoses.map(d=>`
-          <label class="flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm cursor-pointer" style="border-color:${cs.dx===d.id?'var(--accent)':'var(--line)'}">
-            <input type="radio" name="dx" ${cs.dx===d.id?"checked":""} onclick="pickDx('${d.id}')"> ${d.label}
-          </label>`).join("")}
-        <button onclick="submitDx()" ${!cs.dx?"disabled":""} class="btn rounded-md px-5 py-2 text-sm mt-2">تأكيد القرار</button>
-      </section>`;
-    }
-  } else {
-    const o = cs.outcome;
-    html += `<section class="card rounded-lg p-5 space-y-3">
-      <div class="font-semibold">${o.correct?"✅ قرار صحيح":"❌ قرار غير دقيق"} — <span style="color:${o.points>0?'#059669':'#be123c'}">${o.points>0?"+":""}${o.points} نقطة</span></div>
-      ${o.note?`<p style="color:#be123c" class="text-sm">${o.note}</p>`:""}
-      ${cs.paMissing?`<p class="text-sm rounded-md p-2" style="background:#fef2f2;color:#b91c1c">⚠️ لم تُطلب أشعة PA قبل القرار (-10)</p>`:""}
-      <p class="text-sm sub">📚 ${c.citation}</p>
-      <button onclick="goCases()" class="rounded-md border px-4 py-2 text-sm card">‹ العودة إلى الحالات</button>
-    </section>`;
+const C=()=>CASES.find(c=>c.id==S.cid);
+/* ===== navigation ===== */
+function go(v,x){S.v=v;if(x)S.cid=x;if(v=='case'){cs={st:0,chat:[],tchat:[],busy:0,tbusy:0,ex:0,inv:{},dx:null,df:[],mg:null,done:null}}render();scrollTo(0,0)}
+function setLang(){lang=lang=='ar'?'en':'ar';ls('lang',lang);render()}
+function render(){document.documentElement.lang=lang;document.documentElement.dir=lang=='ar'?'rtl':'ltr';
+const n=['home','lib','ev','about'].map(k=>`<button onclick="go('${k}')" ${S.v==k?'class="p"':''}>${T(U[k])}</button>`).join('');
+$app.innerHTML=`<nav><b>${T(U.app)}</b>${n}<button onclick="setLang()">${lang=='ar'?'EN':'عربي'}</button></nav>`+({home:vHome,lib:vLib,case:vCase,ev:vEv,about:vAbout}[S.v])()+`<p class="sub">${T(U.disc)}</p>`}
+const $app=document.getElementById('app');
+/* ===== views ===== */
+function vHome(){const p=ls('prog')||{};const n=Object.keys(p).length;
+return `<div class="card"><h2>${T(U.prog)}</h2><p>${n} / ${CASES.length} ${T(U.done)}</p>${CASES.map(c=>`<div>${c.id}: ${p[c.id]!=null?p[c.id].t+' / '+p[c.id].m:'-'}</div>`).join('')}
+<p><button class="p" onclick="go('lib')">${T(U.lib)}</button> <button onclick="go('ev')">${T(U.ev)}</button></p></div>
+<div class="warn">${T(['الحالات الحالية سيناريوهات تعليمية افتراضية كتبها الذكاء الاصطناعي وهي بانتظار مراجعة خبير، وليست حالات مرضى حقيقية.','Current cases are AI-written fictional educational scenarios pending expert review, not real patient cases.'])}</div>`}
+function vLib(){const q=S.q.toLowerCase();
+const l=CASES.filter(c=>(!S.sp||c.sp==S.sp)&&(c.id+T(SP[c.sp])+T(c.cc)).toLowerCase().includes(q));
+return `<div class="card"><input type="text" placeholder="${T(U.search)}" value="${E(S.q)}" oninput="S.q=this.value;render2()">
+<p><select onchange="S.sp=this.value;render()"><option value="">${T(U.all)}</option>${Object.keys(SP).map(k=>`<option value="${k}" ${S.sp==k?'selected':''}>${T(SP[k])}</option>`).join('')}</select></p></div>
+<div class="g">${l.map(c=>`<div class="card"><b>${c.id}</b><br><span class="tag">${T(SP[c.sp])}</span><span class="tag">${T(DIF[c.d])}</span><span class="tag">${c.age}y</span>
+<br><span class="tag">${TY}</span><span class="tag">Draft — Pending Verification</span><p class="sub">${E(T(c.cc))}</p><button class="p" onclick="go('case','${c.id}')">${T(U.open)}</button></div>`).join('')||`<p>${T(U.empty)}</p>`}</div>`}
+function render2(){const f=document.activeElement,pos=f.selectionStart;render();const i=document.querySelector('input[type=text]');if(i){i.focus();i.setSelectionRange(pos,pos)}}
+const STEPS=[['التاريخ المرضي','History'],['الفحص السريري','Examination'],['الاستقصاءات','Investigations'],['التشخيص','Diagnosis'],['خطة العلاج','Management']];
+const chatHtml=(a,b)=>a.map(m=>`<div class="m ${m.r=='u'?'mu':'ma'}">${E(m.t)}</div>`).join('')+(b?`<div class="sub">${T(U.loading)}</div>`:'');
+const NOAI=['اضبط رابط الوسيط (Worker) في صفحة "حول" لتفعيل الذكاء الاصطناعي.','Set the proxy (Worker) URL in the About page to enable AI.'];
+function vCase(){const c=C(),d=cs.done,st=d?5:cs.st;cs.df=cs.df.filter(x=>x!=cs.dx);
+let h=`<button onclick="go('lib')">${T(U.back)}</button><div class="card"><h2>${c.id}</h2><span class="tag">${T(SP[c.sp])}</span><span class="tag">${TY}</span><span class="tag">Draft — Pending Verification</span>
+<p><b>${T(['الشكوى:','Chief complaint:'])}</b> ${E(T(c.cc))}</p><div>${STEPS.map((s,i)=>`<span class="tag" style="${i==st?'background:var(--ac);color:#fff':''}">${i+1}. ${T(s)}</span>`).join('')}</div></div>`;
+const nav=(ok,last)=>`<p>${st>0?`<button onclick="cs.st--;render()">${T(['‹ السابق','‹ Previous'])}</button> `:''}${last?`<button class="p" onclick="submit()" ${ok?'':'disabled'}>${T(U.sub)}</button>`:`<button class="p" onclick="cs.st++;render()" ${ok?'':'disabled'}>${T(['التالي ›','Next ›'])}</button>`}</p>`;
+const rad=(n,v,ck)=>`<label class="o"><input type="radio" name="${n}" ${ck?'checked':''} onchange="cs.${n}='${v[0]}';render()"> ${E(T(v.slice(1,3)))}</label>`;
+if(d)return h+vRes(c,d);
+if(st==0)h+=`<div class="card"><h3>${T(['١. التاريخ المرضي: اسأل المريض بحرّية بأسئلتك','1. History: ask the patient your own questions'])}</h3>${ls('ep')?'':`<div class="warn">${T(['وضع تجريبي: مطابقة كلمات مع إجابات الحالة المخزّنة (ليس ذكاءً اصطناعيًا). '+NOAI[0],'Demo mode: keyword matching against stored case answers (not AI). '+NOAI[1]])}</div>`}
+${chatHtml(cs.chat,cs.busy)}<p><input type="text" id="ci" placeholder="${T(['اكتب سؤالك للمريض…','Type your question to the patient…'])}" onkeydown="if(event.key=='Enter')ask()"> <button class="p" onclick="ask()" ${cs.busy?'disabled':''}>${T(['إرسال','Send'])}</button></p></div>${nav(cs.chat.some(m=>m.r=='u'))}`;
+if(st==1)h+=`<div class="card"><h3>${T(['٢. الفحص السريري','2. Clinical examination'])}</h3>${cs.ex?E(T(c.ex)):`<button onclick="cs.ex=1;render()">${T(U.showex)}</button>`}</div>${nav(cs.ex)}`;
+if(st==2)h+=`<div class="card"><h3>${T(['٣. الاستقصاءات','3. Investigations'])}</h3>${c.inv.map(i=>`<div style="margin:8px 0"><button onclick="cs.inv['${i.id}']=1;render()" ${cs.inv[i.id]?'disabled':''}>${cs.inv[i.id]?T(U.reqd):T(U.req)}</button> ${E(T(i.l))}
+${cs.inv[i.id]?`<div class="sub">${E(T(i.r))}</div>${i.img?`<div class="ph">${T(U.noimg)}<br>${E(T(i.img))}</div>`:''}`:''}</div>`).join('')}</div>${nav(1)}`;
+if(st==3)h+=`<div class="card"><h3>${T(['٤. التشخيص المبدئي','4. Provisional diagnosis'])}</h3>${c.dx.map(v=>rad('dx',v,cs.dx==v[0])).join('')}</div>
+${cs.dx?`<div class="card"><h3>${T(U.df)}</h3>${c.dx.filter(v=>v[0]!=cs.dx).map(v=>`<label class="o"><input type="checkbox" ${cs.df.includes(v[0])?'checked':''} onchange="tg('${v[0]}')"> ${E(T(v.slice(1,3)))}</label>`).join('')}</div>`:''}${nav(cs.dx)}`;
+if(st==4)h+=`<div class="card"><h3>${T(['٥. خطة العلاج','5. Management plan'])}</h3>${c.mg.map((m,i)=>`<label class="o"><input type="radio" name="mg" ${cs.mg===i?'checked':''} onchange="cs.mg=${i};render()"> ${E(T(m))}</label>`).join('')}</div>${nav(cs.mg!==null,1)}`;
+return h}
+function setHtml(){const e=ls('ep')||'';return `<div class="card"><h3>${T(['إعداد الذكاء الاصطناعي','AI setup'])}</h3><p class="sub">${T(['الصق رابط Cloudflare Worker (يحمل مفتاح API سرًّا؛ لا يوضع المفتاح في هذا الملف). عند التفعيل تُرسل أسئلتك وسياق الحالة إلى الوسيط ثم إلى Anthropic.','Paste your Cloudflare Worker URL (it holds the API key secretly; never put the key in this file). When enabled, your questions and case context are sent to the proxy and then to Anthropic.'])}</p>
+<input type="text" id="ep" value="${E(e)}" placeholder="https://xxxx.workers.dev"><p><button class="p" onclick="ls('ep',document.getElementById('ep').value.trim()||null);render()">${T(U.save)}</button> <span class="${e?'ok':'bad'}">${e?T(['مُفعّل','Configured']):T(['غير مُفعّل (وضع تجريبي)','Not configured (demo mode)'])}</span></p></div>`}
+function sys(mode,c){const hs=c.h.map(x=>'Q: '+x[0][1]+' A: '+x[1][1]).join('\n');
+if(mode=='patient')return `You are a SIMULATED PATIENT in a dental education app. Answer ONLY as the patient, in 1-3 short sentences, in the language/dialect of the student's question. Use ONLY these facts. Age: ${c.age}. Complaint: ${c.cc[1]}\nKnown history:\n${hs}\nIf asked about something not covered, say you are not sure or give a neutral answer; never invent significant new symptoms. Never name a diagnosis, never give clinical advice, never reveal examination findings or test results, never mention being an AI.`;
+return `You are an educational dental TUTOR. Answer the student's question about THIS case only, concisely, in the student's language. Case: age ${c.age}. Complaint: ${c.cc[1]}\nHistory:\n${hs}\nExam: ${c.ex[1]}\nInvestigation results: ${c.inv.map(i=>i.l[1]+' -> '+i.r[1]).join('; ')}\nCorrect diagnosis: ${c.dx.find(v=>v[0]==c.ans)[2]}\nAcceptable differentials: ${c.diffs.join(',')||'none'}\nPrepared rationale: ${c.ex2.map(x=>x[1]).join(' | ')}\nReferences attached to this case (curated, NOT independently verified): ${c.rf.map(x=>R[x[0]].t+' ('+x[2]+')').join(' | ')}\nRules: only cite the references listed, and say their support for a claim is not verified; do not invent sources, DOIs, or facts beyond the case; this is a fictional educational scenario, not clinical advice.`}
+async function ai(mode,msgs){const ep=ls('ep'),c=C();
+if(!ep){if(mode=='patient')return kw(msgs[msgs.length-1].t);throw new Error(T(NOAI))}
+const r=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys(mode,c),messages:msgs.slice(-12).map(m=>({role:m.r=='u'?'user':'assistant',content:m.t}))})});
+if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();if(!j.text)throw new Error(j.error||'empty');return j.text}
+function kw(q){const w=s=>s.toLowerCase().replace(/[^\p{L}\p{N} ]/gu,' ').split(/\s+/).filter(x=>x.length>2);const qw=w(q);let b=null,bs=0;
+C().h.forEach(x=>{const s=w(x[0].join(' ')+' '+x[1].join(' ')).filter(y=>qw.includes(y)).length;if(s>bs){bs=s;b=x}});
+return b?T(b[1]):T(['لا أعرف / لست متأكدًا.',"I'm not sure."])}
+async function ask(){const i=document.getElementById('ci'),q=i.value.trim();if(!q||cs.busy)return;cs.chat.push({r:'u',t:q});cs.busy=1;render();
+let a;try{a=await ai('patient',cs.chat)}catch(e){a='⚠ '+e.message}cs.chat.push({r:'a',t:a});cs.busy=0;render();const n=document.getElementById('ci');if(n)n.focus()}
+async function askT(){const i=document.getElementById('ti'),q=i.value.trim();if(!q||cs.tbusy)return;cs.tchat.push({r:'u',t:q});cs.tbusy=1;render();
+let a;try{a=await ai('tutor',cs.tchat)}catch(e){a='⚠ '+e.message}cs.tchat.push({r:'a',t:a});cs.tbusy=0;render();const n=document.getElementById('ti');if(n)n.focus()}
+function tutHtml(){const c=C();return `<div class="card"><h3>${T(['المعلّم الذكي: اسألني عن هذه الحالة','AI tutor: ask about this case'])}</h3>${ls('ep')?'':`<div class="warn">${T(NOAI)} ${T(['حتى ذلك الحين: شروحات مُعدّة مسبقًا (وضع تجريبي):','Meanwhile: prepared explanations (DEMO):'])}</div>${c.ex2.map(x=>`<p>${E(T(x))}</p>`).join('')}`}
+${chatHtml(cs.tchat,cs.tbusy)}<p><input type="text" id="ti" placeholder="${T(['اسأل عن التشخيص أو التفريقي أو العلاج…','Ask about diagnosis, differentials, management…'])}" onkeydown="if(event.key=='Enter')askT()"> <button class="p" onclick="askT()" ${cs.tbusy?'disabled':''}>${T(['إرسال','Send'])}</button></p></div>`}
+function tg(x){const a=cs.df,i=a.indexOf(x);i<0?a.push(x):a.splice(i,1);render()}
+function submit(){const c=C(),log=[];let t=0;const add=(l,p)=>{log.push([l,p]);t+=p};
+c.inv.forEach(i=>{if(cs.inv[i.id]&&i.p<0)add(i.l,i.p)});
+if(c.endo&&!cs.inv.pa)add(['لم تُطلب PA قبل العلاج الجذري','No PA requested before endodontic treatment'],-10);
+let ok=cs.dx==c.ans;
+if(ok&&c.need&&!c.need.every(i=>cs.inv[i])){ok=false;add(['تشخيص التهاب الدواعم دون سبر وأشعة','Periodontitis diagnosed without probing and radiograph'],-20)}
+else if(ok)add(['تشخيص صحيح','Correct diagnosis'],50);else add(['تشخيص غير صحيح (لا خصم موثّق)','Incorrect diagnosis (no documented penalty)'],0);
+const n=cs.df.filter(x=>c.diffs.includes(x)).length;add([`تشخيص تفريقي مقبول ×${n} (قيمة +5 من تحديد التطبيق)`,`Acceptable differentials ×${n} (+5 each, app-defined)`],n*5);
+const m=c.mg[cs.mg];add(m,m[2]);
+const mx=50+c.diffs.length*5+Math.max(...c.mg.map(x=>x[2]));
+cs.done={t,log,ok,mx};const p=ls('prog')||{};if(!p[c.id]||p[c.id].t<t)p[c.id]={t,m:mx};ls('prog',p);render();scrollTo(0,document.body.scrollHeight)}
+function vRes(c,d){const k=c.dx.find(v=>v[0]==c.ans);
+return `<div class="card"><h2>${T(U.res)}: <span class="${d.ok?'ok':'bad'}">${d.t} / ${d.mx}</span></h2>
+<b>${T(U.bd)}</b>${d.log.map(l=>`<div>${E(T(l[0]))}: <b class="${l[1]<0?'bad':l[1]>0?'ok':''}">${l[1]>0?'+':''}${l[1]}</b></div>`).join('')}
+<p><b>${T(U.key)}:</b> ${E(T(k.slice(1,3)))}</p><p class="sub">${T(['النقاط غير الموثّقة في ملف الإرشادات هي قيم يحددها التطبيق، والتقييم آلي وليس مراجعة خبراء.','Points not in the project guideline file are app-defined; scoring is automated, not expert-reviewed.'])}</p>
+<b>${T(U.obj)}</b><ul>${c.lo.map((x,i)=>i%2==(lang=='ar'?0:1)?`<li>${E(x)}</li>`:'').join('')}</ul>
+<button onclick="go('case','${c.id}')">${T(U.retry)}</button></div>
+${tutHtml()}
+<div class="card"><h3>${T(U.evb)}</h3>${c.rf.map(x=>{const r=R[x[0]];return `<div style="margin:8px 0"><b>${E(r.t)}</b><br><span class="sub">${E(r.a)} · ${E(r.j)} ${r.y}<br>
+${T(['النوع: ','Type: '])}${r.k=='pm'?'Journal/guideline':'Guidance/Textbook'} · ${T(['الوصول: بيانات وصفية فقط (لم تُجلب)','Access: metadata only (not retrieved)'])} · ${T(['التحقق: منسّق يدويًا، بانتظار التحقق المستقل','Verification: manually curated, pending independent verification'])}</span>
+<br>${T(['المعلومة المدعومة: ','Supports: '])}${E(T(x.slice(1,3)))}<br><a class="b" href="${rUrl(r)}" target="_blank" rel="noopener">${T(U.src)} ↗</a></div>`}).join('')}
+<p class="sub">${T(['روابط المصادر هي روابط بحث عن العنوان؛ لم يُتحقق من أن كل ادعاء مدعوم نصًّا.','Source links are title-search links; support for each claim has not been verified against full text.'])}</p></div>`}
+/* ===== live evidence search (PubMed E-utilities + Europe PMC) ===== */
+function vEv(){const s=ls('saved')||[];
+return `<div class="card"><input type="text" id="q" placeholder="${T(U.tp)}" onkeydown="if(event.key=='Enter')evs()">
+<p><label><input type="checkbox" id="spm" checked> PubMed</label> <label><input type="checkbox" id="sep" checked> Europe PMC</label></p>
+<p>${T(U.yr)} <input type="number" id="yr" value="2015" style="width:90px"> ${T(U.sort)} <select id="so"><option value="r">${T(U.rel)}</option><option value="d">${T(U.dt)}</option></select>
+<button class="p" onclick="evs()">${T(U.go)}</button></p></div>
+<div id="evr">${evHtml()}</div>
+${s.length?`<div class="card"><h3>${T(U.saved)}</h3>${s.map((x,i)=>`<div style="margin:6px 0"><a href="${E(x.u)}" target="_blank" rel="noopener">${E(x.t)}</a> <span class="sub">${E(x.s)}</span> <button onclick="rmv(${i})">${T(U.rm)}</button></div>`).join('')}</div>`:''}`}
+function evHtml(){if(EV.busy)return `<p>${T(U.loading)}</p>`;
+let h=EV.err.map(e=>`<div class="warn">${E(e)}</div>`).join('');
+if(EV.done&&!EV.r.length&&!EV.err.length)h+=`<p>${T(U.empty)}</p>`;
+return h+EV.r.map((x,i)=>`<div class="card"><a href="${E(x.u)}" target="_blank" rel="noopener"><b>${E(x.t)}</b></a><br><span class="sub">${E(x.a)} · ${E(x.j)} · ${E(x.y)}<br>${E(x.s)} ${x.id?'· '+E(x.id):''}${x.doi?' · DOI:'+E(x.doi):''}</span><br>
+<span class="tag">${x.ab?T(U.a_abs):T(U.a_meta)}</span>${x.oa?`<span class="tag">${T(U.a_oa)}</span>`:''}<br>
+<button onclick="abst(${i})">${T(U.abs)}</button> <button onclick="sv(${i})">${T(U.save)}</button> <a class="b" href="${E(x.u)}" target="_blank" rel="noopener">${T(U.src)} ↗</a>
+${EV.abs[i]?`<p class="sub">${E(EV.abs[i])}</p>`:''}</div>`).join('')}
+function upd(){document.getElementById('evr').innerHTML=evHtml()}
+async function evs(){const q=document.getElementById('q').value.trim();if(!q)return;
+const yr=+document.getElementById('yr').value||1900,srt=document.getElementById('so').value,pm=document.getElementById('spm').checked,ep=document.getElementById('sep').checked;
+EV={r:[],err:[],busy:true,abs:{},done:false};upd();
+const jobs=[];
+if(pm)jobs.push((async()=>{const B='https://eutils.ncbi.nlm.nih.gov/entrez/eutils/';
+const a=await fetch(`${B}esearch.fcgi?db=pubmed&retmode=json&retmax=8&term=${encodeURIComponent(q)}&datetype=pdat&mindate=${yr}&maxdate=3000&sort=${srt=='d'?'pub_date':'relevance'}`);
+if(!a.ok)throw new Error('HTTP '+a.status);const ids=(await a.json()).esearchresult.idlist;if(!ids.length)return[];
+const b=await fetch(`${B}esummary.fcgi?db=pubmed&retmode=json&id=${ids.join(',')}`);if(!b.ok)throw new Error('HTTP '+b.status);const j=(await b.json()).result;
+return ids.map(id=>{const r=j[id];return{s:'PubMed',id:'PMID:'+id,pm:id,t:r.title,a:(r.authors||[]).slice(0,4).map(x=>x.name).join(', ')+((r.authors||[]).length>4?' et al.':''),j:r.fulljournalname,y:(r.pubdate||'').slice(0,4),
+doi:((r.articleids||[]).find(x=>x.idtype=='doi')||{}).value,u:'https://pubmed.ncbi.nlm.nih.gov/'+id+'/',ab:null,oa:false}})})().catch(e=>{EV.err.push('PubMed: '+e.message);return[]}));
+if(ep)jobs.push((async()=>{const a=await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=core&pageSize=8&query=${encodeURIComponent(q+' AND PUB_YEAR:['+yr+' TO 3000]')}${srt=='d'?encodeURIComponent(' sort_date:y'):''}`);
+if(!a.ok)throw new Error('HTTP '+a.status);const l=(await a.json()).resultList.result||[];
+return l.map(r=>({s:'Europe PMC',id:r.source+':'+r.id,t:(r.title||'').replace(/<[^>]+>/g,''),a:r.authorString||'',j:r.journalTitle||'',y:r.pubYear||'',doi:r.doi,u:'https://europepmc.org/article/'+r.source+'/'+r.id,
+ab:r.abstractText?r.abstractText.replace(/<[^>]+>/g,''):'',oa:r.isOpenAccess=='Y'}))})().catch(e=>{EV.err.push('Europe PMC: '+e.message);return[]}));
+const out=await Promise.all(jobs);EV.r=out.flat();EV.busy=false;EV.done=true;
+EV.r.forEach((x,i)=>{if(x.ab)EV.abs[i]=null});upd()}
+async function abst(i){const x=EV.r[i];if(x.ab){EV.abs[i]=x.ab;return upd()}
+if(x.pm){EV.abs[i]=T(U.loading);upd();try{const r=await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${x.pm}&rettype=abstract&retmode=text`);const t=(await r.text()).trim();
+x.ab=t;EV.abs[i]=t}catch(e){EV.abs[i]='Error: '+e.message}}else EV.abs[i]=T(['لا يتوفر ملخص في السجل.','No abstract in record.']);upd()}
+function sv(i){const x=EV.r[i],s=ls('saved')||[];if(!s.some(y=>y.u==x.u))s.push({t:x.t,u:x.u,s:x.s});ls('saved',s);const q=document.getElementById('q').value;render();document.getElementById('q').value=q;upd()}
+function rmv(i){const s=ls('saved')||[];s.splice(i,1);ls('saved',s);render()}
+function vAbout(){return setHtml()+`<div class="card"><h2>${T(U.about)}</h2>
+<p>${T(['المالك: أحمد نافز أبو عجميه، طالب سنة ثالثة طب أسنان، جامعة مؤتة، الأردن.','Owner: Ahmed Nafez Abuajamieh, 3rd-year dental student, Mutah University, Jordan.'])}</p>
+<p>${T(['البحث العلمي حيّ عبر واجهتي NCBI E-utilities وEurope PMC، وتُرسل عبارة البحث إليهما مباشرة من متصفحك. لا بيانات شخصية تُجمع؛ التقدم والمراجع محفوظة محليًا على جهازك.','Literature search is live via NCBI E-utilities and Europe PMC; your search text is sent directly from your browser to them. No personal data is collected; progress and references are stored locally on your device.'])}</p>
+<p>${T(['حدود: الحالات خيالية وبانتظار مراجعة خبير؛ لا توجد صور موثّقة (تظهر عناصر نائبة شفافة)؛ المريض والمعلّم الذكيان يعملان بنموذج حي فقط بعد ضبط الوسيط، وإلا فوضع تجريبي؛ التقييم آلي وغير معتمد سريريًا.','Limits: cases are fictional and pending expert review; no verified images (transparent placeholders shown); patient/tutor AI is live only once the proxy is configured, otherwise demo mode; scoring is automated and not clinically validated.'])}</p></div>`}
+export default {
+  async fetch(req, env) {
+    const allow = env.ALLOWED_ORIGIN, o = req.headers.get('Origin') || '';
+    const cors = {'Access-Control-Allow-Origin': allow, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type'};
+    const out = (b, s = 200) => new Response(JSON.stringify(b), {status: s, headers: {...cors, 'content-type': 'application/json'}});
+    if (req.method === 'OPTIONS') return new Response(null, {headers: cors});
+    if (req.method !== 'POST' || o !== allow) return out({error: 'forbidden'}, 403);
+    let b; try { b = await req.json(); } catch { return out({error: 'bad json'}, 400); }
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01'},
+      body: JSON.stringify({model: 'claude-haiku-5-5', max_tokens: 400, system: String(b.system || '').slice(0, 6000), messages: (b.messages || []).slice(-12)})
+    });
+    const j = await r.json();
+    const t = (j.content || []).map(x => x.text || '').join('');
+    return t ? out({text: t}) : out({error: (j.error && j.error.message) || 'api error'}, 502);
   }
-  html += `</div>`;
-  return html;
-}
-
-function viewSummary(){
-  return `<div class="space-y-4">
-    <button onclick="goDepts()" class="sub text-sm">‹ العودة إلى الأقسام</button>
-    <header class="flex items-center justify-between border-b pb-3" style="border-color:var(--line)">
-      <h2 class="text-lg font-bold">ملخص الجلسة</h2>${scoreBadge()}
-    </header>
-    <div class="card rounded-lg overflow-x-auto">
-      <table class="w-full text-sm text-right">
-        <thead class="text-xs sub"><tr><th class="p-2">الإجراء</th><th class="p-2">النقاط</th><th class="p-2">المصدر</th></tr></thead>
-        <tbody>${state.log.map(e=>`<tr class="border-t" style="border-color:var(--line)">
-          <td class="p-2">${e.label}</td>
-          <td class="p-2" style="color:${e.points>=0?'#059669':'#be123c'}">${e.points>0?"+":""}${e.points}</td>
-          <td class="p-2 sub">${e.source}</td></tr>`).join("")}</tbody>
-      </table>
-    </div>
-  </div>`;
-}
-
-/* ===================== أفعال ===================== */
-function goDepts(){ state.view="depts"; render(); }
-function goCases(){ state.view="cases"; render(); }
-function goSummary(){ state.view="summary"; render(); }
-function openDept(id){ state.dept=id; state.view="cases"; render(); }
-function openCase(id){ state.caseId=id; state.case={hist:0, examStarted:false, inv:{}, dx:null, outcome:null, paMissing:false}; state.view="case"; render(); }
-function askNext(){ state.case.hist++; render(); }
-function beginExam(){ state.case.examStarted=true; render(); }
-function requestInv(id){
-  const c = CASES.find(x=>x.id===state.caseId);
-  const inv = c.investigations.find(i=>i.id===id);
-  if(state.case.inv[id]) return;
-  state.case.inv[id]=true;
-  logAction(`${c.dept} — ${inv.label}`, inv.points, inv.source);
-  render();
-}
-function pickDx(id){ state.case.dx=id; render(); }
-function submitDx(){
-  const c = CASES.find(x=>x.id===state.caseId);
-  const d = c.diagnoses.find(x=>x.id===state.case.dx);
-  let points=d.points, correct=d.correct, note=null;
-  if(d.id==="dx-perio" && c.perioEvidence){
-    const ok = c.perioEvidence.every(id=>state.case.inv[id]);
-    if(!ok){ points=-20; correct=false; note="لا يمكن تشخيص التهاب دواعم السن دون سبر وأشعة كاملين (AAP 2017 §6)."; }
-  }
-  logAction(`${c.dept} — ${d.label}`, points, note||d.source);
-  if(c.requiresPA){
-    const paInv = c.investigations.find(i=>i.isPA);
-    if(paInv && !state.case.inv[paInv.id]){
-      state.case.paMissing=true;
-      logAction(`${c.dept} — تشخيص دون PA مسبقة`, -10, "قاعدة المشروع 2");
-    }
-  }
-  state.case.outcome={points, correct, note};
-  render();
-}
-function claimBonus(){
-  if(bonusClaimedToday()) return;
-  logAction("مكافأة الدخول اليومي", 10, "مكافأة تفاعل يومية — تلعيب وليست قاعدة سريرية.");
-  try{ localStorage.setItem('dentalSim_bonusDate', new Date().toDateString()); }catch(e){}
-  render();
-}
-
-render();
+  
 </script>
   <footer class="text-center py-6 text-xs sub border-t mt-8" style="border-color:var(--line)">
   (© 2026 محاكي العيادة السنية الذكي — جميع الحقوق محفوظة لـ أحمد نافز أبو عجميه ).
